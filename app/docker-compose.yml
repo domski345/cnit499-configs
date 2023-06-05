@@ -9,5 +9,5 @@ services:
       - 8080:8080
     volumes:
       - type: bind
-        source: proxy.py
+        source: ./proxy.py
         target: /opt/apt/proxy.py
