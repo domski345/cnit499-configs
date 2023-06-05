@@ -17,7 +17,7 @@ def device():
         return {"error": "Request must be JSON"}, 415
 
     # Create device in another thread
-    configure_thread = threading.Thread(target=configure, name="configure_device", args=request)
+    configure_thread = threading.Thread(target=configure, name="configure_device", kwargs=request)
     configure_thread.start()
 
     # Happy return code back to netbox
