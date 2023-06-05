@@ -68,15 +68,15 @@ def configure(**device):
     nb.ipam.ip_addresses.update([{'id': primary_ip4.id, 'vrf': 1, 'assigned_object_type': 'dcim.interface', 'assigned_object_id': int_id}])
 
     # Update netbox console port and node_id
-    nb.dcim.devices.update([{'id': id, 'serial': node_id, 'custom_fields.console': console, 'primary_ip4': primary_ip4.id}])
+    nb.dcim.devices.update([{'id': id, 'serial': node_id, 'custom_fields': [{'console': console}], 'primary_ip4': primary_ip4.id, 'status': "planned"}])
 
     xrv_config = [
      (b"Press RETURN to get started",b"\r"),
-     (b"Enter root-system username:",b"drusso\n", 60),
-     (b":",b"cisco!123\n"),
-     (b":",b"cisco!123\n"),
+     (b"Enter root-system username:",b"drusso\n"),
+     (b"secret:",b"cisco!123\n"),
+     (b"again:",b"cisco!123\n"),
      (b"SYSTEM CONFIGURATION COMPLETED", b"\r", 120),
-     (b"Username:", b"drusso\n", 120),
+     (b"Username:", b"drusso\n"),
      (b"Password:", b"cisco!123\n"),
      (b"#", b"config\n"),
      (b"#", f"hostname {name}\n".encode('utf8')),
@@ -103,11 +103,11 @@ def configure(**device):
     
     xrv9k_config = [
      (b"Press RETURN to get started",b"\r"),
-     (b"Enter root-system username:",b"drusso\n", 60),
-     (b":",b"cisco!123\n"),
-     (b":",b"cisco!123\n"),
+     (b"Enter root-system username:",b"drusso\n"),
+     (b"secret:",b"cisco!123\n"),
+     (b"again:",b"cisco!123\n"),
      (b"SYSTEM CONFIGURATION COMPLETED", b"\r", 120),
-     (b"Username:", b"drusso\n", 120),
+     (b"Username:", b"drusso\n"),
      (b"Password:", b"cisco!123\n"),
      (b"#", b"config\n"),
      (b"#", f"hostname {name}\n".encode('utf8')),
@@ -147,10 +147,10 @@ def configure(**device):
         else:
             tn.read_until(line[0])
         tn.write(line[1])
+    tn.close()
+    
+    # Set status to active after (hopefully) successful config
     nb.dcim.devices.update([{'id': id, 'status': "active"}])
-
-    # set the status and primary ip of the device 
-    nb.dcim.devices.update([{'id': id, 'status': "planned", 'primary_ip4': primary_ip4.id}])
 
 @application.delete("/device")
 def device_delete():
