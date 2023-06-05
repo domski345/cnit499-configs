@@ -16,17 +16,17 @@ def device():
     if not request.is_json:
         return {"error": "Request must be JSON"}, 415
 
-    # Get initial call from netbox webhook when device is created
-    device = request.get_json()
-
     # Create device in another thread
-    configure_thread = threading.Thread(target=configure, name="configure_device", args=device)
+    configure_thread = threading.Thread(target=configure, name="configure_device", args=request)
     configure_thread.start()
 
     # Happy return code back to netbox
     return "Node was created", 201
 
-def configure(device):
+def configure(request):
+
+    # Get initial call from netbox webhook when device is created
+    device = request.get_json()
 
     # Set variables accordingly
     id = device['data']['id']
