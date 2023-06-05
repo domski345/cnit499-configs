@@ -1,5 +1,5 @@
 import requests,pynetbox,random, json, threading, ipaddress
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, copy_current_request_context
 from telnetlib import Telnet
 from napalm import get_network_driver
 from jinja2 import Template
@@ -17,13 +17,13 @@ def device():
         return {"error": "Request must be JSON"}, 415
 
     # Create device in another thread
-    configure_thread = threading.Thread(target=configure, name="configure_device", kwargs=request)
-    configure_thread.start()
+    threading.Thread(target=configure, name="configure_device").start()
 
     # Happy return code back to netbox
     return "Node was created", 201
 
-def configure(request):
+@copy_current_request_context
+def configure():
 
     # Get initial call from netbox webhook when device is created
     device = request.get_json()
