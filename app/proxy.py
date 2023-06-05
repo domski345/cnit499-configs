@@ -4,7 +4,7 @@ from telnetlib import Telnet
 from napalm import get_network_driver
 from jinja2 import Template
 application = Flask(__name__)
-project_id = "3bcd7eca-5c2e-4199-8c7d-690874e6ab72"
+project_id = "eb9147b9-15d6-4a12-96f8-df230916f593"
 netbox_token = '0123456789abcdef0123456789abcdef01234567'
 nb = pynetbox.api('http://netbox.brownout.tech:8000/', token=netbox_token)
 
@@ -49,22 +49,22 @@ def device():
     requests.post(api_url)
 
     # Allocate a mgmt ip address
-    primary_ip6 = nb.ipam.prefixes.get(2).available_ips.create() # 2 is the Mgmt prefix
+    primary_ip4 = nb.ipam.prefixes.get(2).available_ips.create() # 2 is the Mgmt prefix
 
     # Find mgmt interface ID
     int_id = nb.dcim.interfaces.get(device_id=id,name="MgmtEth0/0/CPU0/0")['id']
 
     # Assign mgmt IP to the mgmt interface
-    nb.ipam.ip_addresses.update([{'id': primary_ip6.id, 'vrf': 1, 'assigned_object_type': 'dcim.interface', 'assigned_object_id': int_id}])
+    nb.ipam.ip_addresses.update([{'id': primary_ip4.id, 'vrf': 1, 'assigned_object_type': 'dcim.interface', 'assigned_object_id': int_id}])
 
     # Set the mgmt interface vrf
     nb.dcim.interfaces.update([{'id': int_id, 'vrf': 1}])
 
     # set the status and primary ip of the device 
-    nb.dcim.devices.update([{'id': id, 'status': "planned", 'primary_ip6': primary_ip6.id}])
+    nb.dcim.devices.update([{'id': id, 'status': "planned", 'primary_ip6': primary_ip4.id}])
 
     # Call the "ZTP" telnet script
-    device_args=[console,name,primary_ip6,id]
+    device_args=[console,name,primary_ip4,id,template_id]
     configure_thread = threading.Thread(target=configure, name="configure_device", args=device_args)
     configure_thread.start()
 
@@ -182,69 +182,82 @@ def debug():
     print(json.dumps(request.get_json(),indent=4))
     return "debug'd!", 201
 
-def configure(port,hostname,ip6,id):
-        tn = Telnet('gns3.brownout.tech', port)
-        tn.read_until(b"Press RETURN to get started")
-        tn.write(b"\r")
-        tn.read_until(b"Enter root-system username:")
-        tn.write(b"drusso\r")
-        tn.read_until(b":")
-        tn.write(b"cisco!123\r")
-        tn.read_until(b":")
-        tn.write(b"cisco!123\r")
-        tn.read_until(b"SYSTEM CONFIGURATION COMPLETED", timeout=120)
-        tn.write(b"\r")
-        tn.read_until(b"Username:")
-        tn.write(b"cisco\r")
-        tn.read_until(b"Password:")
-        tn.write(b"cisco\r")
-        tn.read_until(b"#")
-        tn.write(b"config\r")
-        tn.read_until(b"(config)#")
-        tn.write(f"hostname {hostname}\n".encode('utf8'))
-        tn.read_until(b"#")
-        tn.write(b"vrf Mgmt address-family ipv6 unicast\r")
-        tn.read_until(b"#")
-        tn.write(b"exit\r")
-        tn.read_until(b"#")
-        tn.write(b"address-family ipv4 unicast\r")
-        tn.read_until(b"#")
-        tn.write(b"exit\r")
-        tn.read_until(b"#")
-        tn.write(b"exit\r")
-        tn.read_until(b"#")
-        tn.write(b"router static vrf Mgmt address-family ipv6 unicast ::/0 2602:fe6a:301:1::1\r")
-        tn.read_until(b"#")
-        tn.write(b"interface MgmtEth0/0/CPU0/0\r")
-        tn.read_until(b"#")
-        tn.write(b"vrf Mgmt\r")
-        tn.read_until(b"#")
-        tn.write(f"ipv6 address {ip6}\n".encode('utf8'))
-        tn.read_until(b"#")
-        tn.write(b"no shut\n")
-        tn.read_until(b"#")
-        tn.write(b"exit\n")
-        tn.read_until(b"#")
-        tn.write(b"ssh server v2\n")
-        tn.read_until(b"#")
-        tn.write(b"ssh server vrf Mgmt\n")
-        tn.read_until(b"#")
-        tn.write(b"lldp\n")
-        tn.read_until(b"#")
-        tn.write(b"exit\n")
-        tn.read_until(b"#")
-        tn.write(b"xml agent tty iteration off\n")
-        tn.read_until(b"#")
-        tn.write(b"xml agent vrf Mgmt\n")
-        tn.read_until(b"#")
-        tn.write(b"end\n")
-        tn.read_until(b":")
-        tn.write(b"yes\n")
-        tn.read_until(b"#")
-        tn.write(b"crypto key generate rsa\n")
-        tn.read_until(b":")
-        tn.write(b"\n")
-        tn.read_until(b"#")
-        tn.write(b"exit\n")
-        tn.close()
-        nb.dcim.devices.update([{'id': id, 'status': "active"}])
+def configure(port,hostname,ip4,id,template_id):
+
+    xrv_config = [
+     (b"Press RETURN to get started",b"\r"),
+     (b"Enter root-system username:",b"drusso\n", 60),
+     (b":",b"cisco!123\n"),
+     (b":",b"cisco!123\n"),
+     (b"SYSTEM CONFIGURATION COMPLETED", b"\r", 120),
+     (b"Username:", b"drusso\n", 120),
+     (b"Password:", b"cisco!123\n"),
+     (b"#", b"config\n"),
+     (b"#", f"hostname {hostname}\n".encode('utf8')),
+     (b"#", b"vrf Mgmt address-family ipv4 unicast\n"),
+     (b"#", b"exit\n"),
+     (b"#", b"exit\n"),
+     (b"#", b"router static vrf Mgmt address-family ipv4 unicast 0.0.0.0/0 172.24.16.1\n"),
+     (b"#", b"interface MgmtEth0/0/CPU0/0\n"),
+     (b"#", b"vrf Mgmt\n"),
+     (b"#", f"ipv4 address {ip4}\n".encode('utf8')),
+     (b"#", b"no shut\n"),
+     (b"#", b"exit\n"),
+     (b"#", b"ssh server v2\n"),
+     (b"#", b"ssh server vrf Mgmt\n"),
+     (b"#", b"lldp\n"),
+     (b"#", b"exit\n"),
+     (b"#", b"xml agent tty iteration off\n"),
+     (b"#", b"xml agent vrf Mgmt\n"),
+     (b"#", b"end\n"),
+     (b":", b"yes\n"),
+     (b"#", b"crypto key generate rsa\n"),
+     (b":", b"\n"),
+     (b"#", b"exit\n")]
+    
+    xrv9k_config = [
+     (b"Press RETURN to get started",b"\r"),
+     (b"Enter root-system username:",b"drusso\n", 60),
+     (b":",b"cisco!123\n"),
+     (b":",b"cisco!123\n"),
+     (b"SYSTEM CONFIGURATION COMPLETED", b"\r", 120),
+     (b"Username:", b"drusso\n", 120),
+     (b"Password:", b"cisco!123\n"),
+     (b"#", b"config\n"),
+     (b"#", f"hostname {hostname}\n".encode('utf8')),
+     (b"#", b"vrf Mgmt address-family ipv4 unicast\n"),
+     (b"#", b"exit\n"),
+     (b"#", b"exit\n"),
+     (b"#", b"router static vrf Mgmt address-family ipv4 unicast 0.0.0.0/0 172.24.16.1\n"),
+     (b"#", b"interface MgmtEth0/0/CPU0/0\n"),
+     (b"#", b"vrf Mgmt\n"),
+     (b"#", f"ipv4 address {ip4}\n".encode('utf8')),
+     (b"#", b"no shut\n"),
+     (b"#", b"exit\n"),
+     (b"#", b"ssh server v2\n"),
+     (b"#", b"ssh server vrf Mgmt\n"),
+     (b"#", b"lldp\n"),
+     (b"#", b"exit\n"),
+     (b"#", b"xml agent tty iteration off\n"),
+     (b"#", b"xml agent vrf Mgmt\n"),
+     (b"#", b"end\n"),
+     (b":", b"yes\n"),
+     (b"#", b"exit\n")]
+    
+    match template_id:
+        case "":
+            conf = xrv9k_config
+        case "9a99c0d2-cc17-4452-9e74-57ba5cd166eb":
+            conf = xrv_config
+        case _:
+            nb.dcim.devices.update([{'id': id, 'status': "failed"}])
+            return "fail"
+    
+    tn = Telnet('gns3.domski.tech', port)
+    for line in conf:
+        if len(line) == 3:
+            tn.read_until(line[0],timeout=line[2])
+        else:
+            tn.read_until(line[0])
+        tn.write(line[1])
+    nb.dcim.devices.update([{'id': id, 'status': "active"}])
