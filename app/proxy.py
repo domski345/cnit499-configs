@@ -29,8 +29,10 @@ def configure(**device):
 
     # Set variables accordingly
     id = device['data']['id']
-    template_id = device['data']['device_type']['slug']
     name = device['data']['name']
+    device_type = nb.dcim.device_types.get(id=device['data']['device_type']['id'])
+    template_id = device_type['data']['slug']
+    conf = json.load(device_type['data']['custom_fields']['ztp_config'])
 
     # Make API call to GNS3 to create the VM
     api_url = f"http://{gns_url}/v2/projects/{project_id}/templates/{template_id}"
@@ -43,7 +45,7 @@ def configure(**device):
 
     # Generate mac address for mgmt nic
     mac_address = "00:20:91:%02x:%02x:%02x" % (random.randint(0, 255),random.randint(0, 255),random.randint(0, 255))
-    option_base = nb.dcim.device_types.get(id=device['data']['device_type']['id'])['custom_fields']['options']
+    option_base = device_type['data']['custom_fields']['options']
     options = f"{option_base}{mac_address}"
 
     # Make API call to update the VM's name and Mgmt nic in GNS3
@@ -68,85 +70,18 @@ def configure(**device):
     nb.ipam.ip_addresses.update([{'id': primary_ip4.id, 'vrf': 1, 'assigned_object_type': 'dcim.interface', 'assigned_object_id': int_id}])
 
     # Update netbox console port and node_id
-    nb.dcim.devices.update([{'id': id, 'serial': node_id, 'custom_fields': [{'console': console}], 'primary_ip4': primary_ip4.id, 'status': "planned"}])
-
-    xrv_config = [
-     (b"Press RETURN to get started",b"\r"),
-     (b"Enter root-system username:",b"drusso\n"),
-     (b"secret:",b"cisco!123\n"),
-     (b"again:",b"cisco!123\n"),
-     (b"SYSTEM CONFIGURATION COMPLETED", b"\r", 120),
-     (b"Username:", b"drusso\n"),
-     (b"Password:", b"cisco!123\n"),
-     (b"#", b"config\n"),
-     (b"#", f"hostname {name}\n".encode('utf8')),
-     (b"#", b"vrf Mgmt address-family ipv4 unicast\n"),
-     (b"#", b"exit\n"),
-     (b"#", b"exit\n"),
-     (b"#", b"router static vrf Mgmt address-family ipv4 unicast 0.0.0.0/0 172.24.16.1\n"),
-     (b"#", b"interface MgmtEth0/0/CPU0/0\n"),
-     (b"#", b"vrf Mgmt\n"),
-     (b"#", f"ipv4 address {primary_ip4}\n".encode('utf8')),
-     (b"#", b"no shut\n"),
-     (b"#", b"exit\n"),
-     (b"#", b"ssh server v2\n"),
-     (b"#", b"ssh server vrf Mgmt\n"),
-     (b"#", b"lldp\n"),
-     (b"#", b"exit\n"),
-     (b"#", b"xml agent tty iteration off\n"),
-     (b"#", b"xml agent vrf Mgmt\n"),
-     (b"#", b"end\n"),
-     (b":", b"yes\n"),
-     (b"#", b"crypto key generate rsa\n"),
-     (b":", b"\n"),
-     (b"#", b"exit\n")]
+    nb.dcim.devices.update([{'id': id, 'serial': node_id, 'custom_fields': {'console': console}, 'primary_ip4': primary_ip4.id, 'status': "planned"}])
     
-    xrv9k_config = [
-     (b"Press RETURN to get started",b"\r"),
-     (b"Enter root-system username:",b"drusso\n"),
-     (b"secret:",b"cisco!123\n"),
-     (b"again:",b"cisco!123\n"),
-     (b"SYSTEM CONFIGURATION COMPLETED", b"\r", 120),
-     (b"Username:", b"drusso\n"),
-     (b"Password:", b"cisco!123\n"),
-     (b"#", b"config\n"),
-     (b"#", f"hostname {name}\n".encode('utf8')),
-     (b"#", b"vrf Mgmt address-family ipv4 unicast\n"),
-     (b"#", b"exit\n"),
-     (b"#", b"exit\n"),
-     (b"#", b"router static vrf Mgmt address-family ipv4 unicast 0.0.0.0/0 172.24.16.1\n"),
-     (b"#", b"interface MgmtEth0/0/CPU0/0\n"),
-     (b"#", b"vrf Mgmt\n"),
-     (b"#", f"ipv4 address {primary_ip4}\n".encode('utf8')),
-     (b"#", b"no shut\n"),
-     (b"#", b"exit\n"),
-     (b"#", b"ssh server v2\n"),
-     (b"#", b"ssh server vrf Mgmt\n"),
-     (b"#", b"lldp\n"),
-     (b"#", b"exit\n"),
-     (b"#", b"xml agent tty iteration off\n"),
-     (b"#", b"xml agent vrf Mgmt\n"),
-     (b"#", b"end\n"),
-     (b":", b"yes\n"),
-     (b"#", b"exit\n")]
-    
-    if template_id == "9a99c0d2-cc17-4452-9e74-57ba5cd166eb":
-        conf = xrv_config
-    elif template_id == "ebb4aa62-1312-4e9b-ac2c-3315d5ece3b3":
-        conf = xrv9k_config
-    # elif template_id == "ebb4aa62-1312-4e9b-ac2c-3315d5ece3b3":
-    #     conf = Null
-    else:
-        nb.dcim.devices.update([{'id': id, 'status': "failed"}])
-        return "fail"
-    
+    # Connect with telnet and begin configuring
     tn = Telnet('gns3.domski.tech', console)
-    for line in conf:
-        if len(line) == 3:
-            tn.read_until(line[0],timeout=line[2])
+    for line in conf.items():
+        tn.read_until(line['read'].encode('utf-8'))
+        rendered = Template(line['write'])
+        rendered_line = rendered.substitute(name=name,ip=primary_ip4)
+        if "timeout" in line:
+            tn.write(rendered_line.encode('utf-8'), timeout=line['timeout'])
         else:
-            tn.read_until(line[0])
-        tn.write(line[1])
+            tn.write(rendered_line.encode('utf-8'))
     tn.close()
     
     # Set status to active after (hopefully) successful config
