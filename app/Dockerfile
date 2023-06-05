@@ -6,5 +6,5 @@ COPY Pipfile* uwsgi.ini /usr/src/
 RUN apk add libxslt-dev libxml2-dev && cd /usr/src && pip install -U pip && pipenv install --system --deploy && \
     mkdir /var/opt/app && chown uwsgi /var/opt/app
 
-COPY *.py /opt/app
+COPY main.py /opt/app
 RUN chmod -R g-w,o-w /opt/app
