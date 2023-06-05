@@ -58,17 +58,17 @@ def configure(**device):
     # Allocate a mgmt ip address
     primary_ip4 = nb.ipam.prefixes.get(2).available_ips.create() # 2 is the Mgmt prefix
 
-    # Update netbox console port and node_id
-    nb.dcim.devices.update([{'id': id, 'serial': node_id, 'custom_fields.console': console, 'primary_ip4': primary_ip4.id}])
-
     # Find mgmt interface ID
     int_id = nb.dcim.interfaces.get(device_id=id,name="MgmtEth0/0/CPU0/0")['id']
+
+    # Set the mgmt interface vrf and mac address
+    nb.dcim.interfaces.update([{'id': int_id, 'vrf': 1, 'mac_address': mac_address}])
 
     # Assign mgmt IP to the mgmt interface
     nb.ipam.ip_addresses.update([{'id': primary_ip4.id, 'vrf': 1, 'assigned_object_type': 'dcim.interface', 'assigned_object_id': int_id}])
 
-    # Set the mgmt interface vrf and mac address
-    nb.dcim.interfaces.update([{'id': int_id, 'vrf': 1, 'mac_address': mac_address}])
+    # Update netbox console port and node_id
+    nb.dcim.devices.update([{'id': id, 'serial': node_id, 'custom_fields.console': console, 'primary_ip4': primary_ip4.id}])
 
     xrv_config = [
      (b"Press RETURN to get started",b"\r"),
