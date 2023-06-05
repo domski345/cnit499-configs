@@ -7,7 +7,7 @@ application = Flask(__name__)
 project_id = "eb9147b9-15d6-4a12-96f8-df230916f593"
 netbox_token = '0123456789abcdef0123456789abcdef01234567'
 gns_url = "gns3.domski.tech:3080"
-nb = pynetbox.api('http://netbox.brownout.tech:8000/', token=netbox_token)
+nb = pynetbox.api('http://gns3.domski.tech:8000/', token=netbox_token)
 
 
 @application.post("/device")
@@ -159,7 +159,7 @@ def device_update():
     # Only re-apply the config if the status is set to staged
     if update['data']['status']['value'] == 'staged':
         # POST request to render config from NetBox
-        api_url = f"http://netbox.brownout.tech:8000/api/dcim/devices/{update['data']['id']}/render-config/"
+        api_url = f"http://gns3.domski.tech:8000/api/dcim/devices/{update['data']['id']}/render-config/"
         response = requests.post(api_url, headers={'authorization' : f'Token {netbox_token}'})
         
         # Push config using NAPALM to device
