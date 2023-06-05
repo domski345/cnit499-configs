@@ -6,6 +6,7 @@ from jinja2 import Template
 application = Flask(__name__)
 project_id = "eb9147b9-15d6-4a12-96f8-df230916f593"
 netbox_token = '0123456789abcdef0123456789abcdef01234567'
+gns_url = "gns3.domski.tech:3080"
 nb = pynetbox.api('http://netbox.brownout.tech:8000/', token=netbox_token)
 
 
@@ -24,7 +25,7 @@ def device():
     name = device['data']['name']
 
     # Make API call to GNS3 to create the VM
-    api_url = f"http://gns3.brownout.tech:3080/v2/projects/{project_id}/templates/{template_id}"
+    api_url = f"http://{gns_url}/v2/projects/{project_id}/templates/{template_id}"
     data = {"x": random.randrange(-800,800), "y": random.randrange(-500,500), "name": f"{name}", "compute_id": "local"}
     response = requests.post(api_url, json=data)
 
@@ -37,7 +38,7 @@ def device():
     options = f"-nic bridge,br=br0,model=e1000,mac={mac_address}"
 
     # Make API call to update the VM's name and Mgmt nic in GNS3
-    api_url = f"http://gns3.brownout.tech:3080/v2/projects/{project_id}/nodes/{node_id}"
+    api_url = f"http://{gns_url}/v2/projects/{project_id}/nodes/{node_id}"
     data = {"name": name, "properties": { "options": options } }
     response = requests.put(api_url, json=data)
 
@@ -45,7 +46,7 @@ def device():
     nb.dcim.devices.update([{'id': id, 'serial': node_id, 'asset_tag': console}])
 
     # Begin ZTP
-    api_url = f"http://gns3.brownout.tech:3080/v2/projects/{project_id}/nodes/{node_id}/start"
+    api_url = f"http://{gns_url}/v2/projects/{project_id}/nodes/{node_id}/start"
     requests.post(api_url)
 
     # Allocate a mgmt ip address
@@ -82,11 +83,11 @@ def device_delete():
     node_id = device['data']['serial']
 
     # Turn off th router
-    requests.post(f"http://gns3.brownout.tech:3080/v2/projects/{project_id}/nodes/{device['data']['serial']}/stop")
+    requests.post(f"http://{gns_url}/v2/projects/{project_id}/nodes/{device['data']['serial']}/stop")
     name = device['data']['name']
 
     # Delete the router
-    api_url = f"http://gns3.brownout.tech:3080/v2/projects/{project_id}/nodes/{node_id}"
+    api_url = f"http://{gns_url}/v2/projects/{project_id}/nodes/{node_id}"
     requests.delete(api_url)
 
     # Happy return code back to netbox
@@ -109,7 +110,7 @@ def cable():
     interface_b = nb.dcim.interfaces.get(id=cable['data']['b_terminations'][0]['object_id'])
 
     # Make API call to create the cable in GNS3
-    api_url = f"http://gns3.brownout.tech:3080/v2/projects/{project_id}/links"
+    api_url = f"http://{gns_url}/v2/projects/{project_id}/links"
     data = {"nodes": [{ "node_id": device_a['serial'], "adapter_number": int(interface_a['label']), "port_number": 0 }, { "node_id": device_b['serial'], "adapter_number": int(interface_b['label']), "port_number": 0 }]}
     response = requests.post(api_url, json=data)
 
@@ -144,7 +145,7 @@ def cable_delete():
         return {"error": "Request must be JSON"}, 415
     device = request.get_json()
     link_id = device['data']['label']
-    api_url = f"http://gns3.brownout.tech:3080/v2/projects/{project_id}/links/{link_id}"
+    api_url = f"http://{gns_url}/v2/projects/{project_id}/links/{link_id}"
     requests.delete(api_url)
     return f"{link_id} was deleted", 201
 
