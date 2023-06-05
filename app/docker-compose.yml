@@ -10,4 +10,4 @@ services:
     volumes:
       - type: bind
         source: ./proxy.py
-        target: /opt/apt/proxy.py
+        target: /opt/app/proxy.py
