@@ -2,10 +2,6 @@ hostname {{ device.name }}
 vrf Mgmt
  address-family ipv6 unicast
  !
-{%- if device.device_role.id == 3 %}
-vrf Core
- address-family ipv6 unicast
-{%- endif %}
 !
 {%- for interface in device.interfaces.all()|sort(attribute='label') %}
 interface {{ interface.name }}
@@ -19,19 +15,10 @@ interface {{ interface.name }}
 {%- endfor %}
 router static
  vrf Mgmt
-  address-family ipv6 unicast
-   ::/0 2602:fe6a:301:1::1
+  address-family ipv4 unicast
+   0.0.0.0/0 172.24.16.1
   !
  !
-{%- if device.device_role.id == 3 %}
-router isis internal
- net 49.0000.0000.0000.{{ "%04X"|format(device.id) }}.00
- {%- for interface in device.interfaces.all()|rejectattr() %}
- interface {{ interface.name }}
-  address-family ipv6 unicast
- {%- endfor %}
- !
-{%- endif %}
 !
 xml agent tty
  iteration off
