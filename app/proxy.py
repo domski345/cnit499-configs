@@ -21,12 +21,12 @@ def device():
     device = request.get_json()
 
     # Create device in another thread
-    threading.Thread(target=configure, name="configure_device", kwargs=device).start()
+    threading.Thread(target=create_device, name="configure_device", kwargs=device).start()
 
     # Happy return code back to netbox
     return "Node was created", 201
 
-def configure(**device):
+def create_device(**device):
 
     # Set variables accordingly
     id = device['data']['id']
@@ -92,14 +92,33 @@ def device_delete():
     #Error checking
     if not request.is_json:
         return {"error": "Request must be JSON"}, 415
+
+    # Get initial call from netbox webhook when device is created
+    device = request.get_json()
+
+    # Create device in another thread
+    threading.Thread(target=delete_device, name="configure_device", kwargs=device).start()
+
+    # Happy return code back to netbox
+    return "Node was created", 201
+
+def delete_device(**device):
+
+    # find device ID
+    id = device['data']['id']
     
     # Find the device's node_id from the call's json body
-    device = request.get_json()
     node_id = device['data']['serial']
 
     # Turn off th router
     requests.post(f"http://{gns_url}/v2/projects/{project_id}/nodes/{device['data']['serial']}/stop")
     name = device['data']['name']
+
+    # Delete associated cables 
+    nb.ipam.cables.delete(nb.ipam.cables.filter(device_id=id))
+
+    # Delete associated IP addresses
+    nb.ipam.ip_addresses.delete(nb.ipam.ip_addresses.filter(device_id=id))
 
     # Delete the router
     api_url = f"http://{gns_url}/v2/projects/{project_id}/nodes/{node_id}"
