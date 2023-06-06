@@ -51,7 +51,7 @@ def create_device(**device):
     mac_address = "00:20:91:%02x:%02x:%02x" % (r1,r2,r3)
     is_is_id = "0020.91%02x,%02x%02x" % (r1,r2,r3)
     option = device_type['custom_fields']['options']
-    options = f"-nic bridge,br=br0,model=e1000,mac={mac_address}{option}"
+    options = f"-nic bridge,br=br0,model=e1000,mac={mac_address} {option}"
 
     # Make API call to update the VM's name and Mgmt nic in GNS3
     api_url = f"http://{gns_url}/v2/projects/{project_id}/nodes/{node_id}"
