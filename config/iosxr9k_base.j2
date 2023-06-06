@@ -1,0 +1,47 @@
+hostname {{ device.name }}
+username drusso
+ group root-lr
+ group cisco-support
+ secret 0 cisco!123
+!
+vrf Mgmt
+ address-family ipv6 unicast
+ !
+!
+call-home
+ service active
+ contact smart-licensing
+ profile CiscoTAC-1
+  active
+  destination transport-method http
+ !
+!
+{%- for interface in device.interfaces.all()|sort(attribute='label') %}
+interface {{ interface.name }}
+ {%- if interface.vrf %}
+ vrf {{ interface.vrf }}
+ {%- endif %}
+ {%- for ip in interface.ip_addresses.all() %}
+ ipv{{ ip.family }} address {{ ip.address }}
+ {%- endfor %}
+!
+{%- endfor %}
+router static
+ vrf Mgmt
+  address-family ipv4 unicast
+   0.0.0.0/0 172.24.16.1
+  !
+ !
+!
+xml agent tty
+ iteration off
+!
+xml agent
+ vrf Mgmt
+ !
+!
+lldp
+!
+ssh server v2
+ssh server vrf Mgmt
+end
