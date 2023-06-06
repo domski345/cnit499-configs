@@ -115,7 +115,7 @@ def delete_device(**device):
     name = device['data']['name']
 
     # Delete associated cables 
-    nb.ipam.cables.delete(nb.ipam.cables.filter(device_id=id))
+    nb.dcim.cables.delete(nb.dcim.cables.filter(device_id=id))
 
     # Delete associated IP addresses
     nb.ipam.ip_addresses.delete(nb.ipam.ip_addresses.filter(device_id=id))
