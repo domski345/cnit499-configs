@@ -45,9 +45,13 @@ def create_device(**device):
     console = response.json()["console"]
 
     # Generate mac address for mgmt nic
-    mac_address = "00:20:91:%02x:%02x:%02x" % (random.randint(0, 255),random.randint(0, 255),random.randint(0, 255))
-    option_base = device_type['custom_fields']['options']
-    options = f"{option_base}{mac_address}"
+    r1 = random.randint(0, 255)
+    r2 = random.randint(0, 255)
+    r3 = random.randint(0, 255)
+    mac_address = "00:20:91:%02x:%02x:%02x" % (r1,r2,r3)
+    is_is_id = "0020.91%02x,%02x%02x" % (r1,r2,r3)
+    option = device_type['custom_fields']['options']
+    options = f"-nic bridge,br=br0,model=e1000,mac={mac_address}{option}"
 
     # Make API call to update the VM's name and Mgmt nic in GNS3
     api_url = f"http://{gns_url}/v2/projects/{project_id}/nodes/{node_id}"
@@ -71,7 +75,7 @@ def create_device(**device):
     nb.ipam.ip_addresses.update([{'id': primary_ip4.id, 'vrf': 1, 'assigned_object_type': 'dcim.interface', 'assigned_object_id': int_id}])
 
     # Update netbox console port and node_id
-    nb.dcim.devices.update([{'id': id, 'serial': node_id, 'custom_fields': {'console': console}, 'primary_ip4': primary_ip4.id, 'status': "planned"}])
+    nb.dcim.devices.update([{'id': id, 'serial': node_id, 'custom_fields': {'console': console, 'is_is_system_id': is_is_id}, 'primary_ip4': primary_ip4.id, 'status': "planned"}])
     
     # Connect with telnet and begin configuring
     tn = Telnet('gns3.domski.tech', console)
