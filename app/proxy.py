@@ -74,7 +74,7 @@ def configure(**device):
     
     # Connect with telnet and begin configuring
     tn = Telnet('gns3.domski.tech', console)
-    for line in conf.items():
+    for line in conf['conf']:
         tn.read_until(line['read'].encode('utf-8'))
         rendered = Template(line['write'])
         rendered_line = rendered.substitute(name=name,ip=primary_ip4)
