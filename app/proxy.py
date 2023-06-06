@@ -32,7 +32,7 @@ def configure(**device):
     name = device['data']['name']
     device_type = nb.dcim.device_types.get(id=device['data']['device_type']['id'])
     template_id = device_type['slug']
-    conf = json.load(device_type['custom_fields']['ztp_config'])
+    conf = device_type['custom_fields']['ztp_config']
 
     # Make API call to GNS3 to create the VM
     api_url = f"http://{gns_url}/v2/projects/{project_id}/templates/{template_id}"
