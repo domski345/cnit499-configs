@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify, copy_current_request_context
 from telnetlib import Telnet
 from napalm import get_network_driver
 from jinja2 import Template
+from string import Template
 application = Flask(__name__)
 project_id = "eb9147b9-15d6-4a12-96f8-df230916f593"
 netbox_token = '0123456789abcdef0123456789abcdef01234567'
