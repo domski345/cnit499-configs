@@ -76,13 +76,12 @@ def configure(**device):
     # Connect with telnet and begin configuring
     tn = Telnet('gns3.domski.tech', console)
     for line in conf['conf']:
-        tn.read_until(line['read'].encode('utf-8'))
-        rendered = Template(line['write'])
-        rendered_line = rendered.substitute(name=name,ip=primary_ip4)
         if "timeout" in line:
-            tn.write(rendered_line.encode('utf-8'), timeout=line['timeout'])
+            tn.read_until(line['read'].encode('utf-8'), timeout=line['timeout'])
         else:
-            tn.write(rendered_line.encode('utf-8'))
+            tn.read_until(line['read'].encode('utf-8'))
+        rendered = Template(line['write'])
+        tn.write(rendered.substitute(name=name,ip=primary_ip4).encode('utf-8'))
     tn.close()
     
     # Set status to active after (hopefully) successful config
