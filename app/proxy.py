@@ -49,7 +49,7 @@ def create_device(**device):
     r2 = random.randint(0, 255)
     r3 = random.randint(0, 255)
     mac_address = "00:20:91:%02x:%02x:%02x" % (r1,r2,r3)
-    is_is_id = "0020.91%02x,%02x%02x" % (r1,r2,r3)
+    is_is_id = "0020.91%02x.%02x%02x" % (r1,r2,r3)
     option = device_type['custom_fields']['options']
     options = f"-nic bridge,br=br0,model=e1000,mac={mac_address} {option}"
 
@@ -66,7 +66,7 @@ def create_device(**device):
     primary_ip4 = nb.ipam.prefixes.get(2).available_ips.create() # 2 is the Mgmt prefix
 
     # Find mgmt interface ID
-    int_id = nb.dcim.interfaces.get(device_id=id,name="MgmtEth0/0/CPU0/0")['id']
+    int_id = nb.dcim.interfaces.get(device_id=id,label=-2)['id']
 
     # Set the mgmt interface vrf and mac address
     nb.dcim.interfaces.update([{'id': int_id, 'vrf': 1, 'mac_address': mac_address}])
