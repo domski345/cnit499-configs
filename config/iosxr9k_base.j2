@@ -24,6 +24,9 @@ interface {{ interface.name }}
  {%- for ip in interface.ip_addresses.all() %}
  ipv{{ ip.family }} address {{ ip.address }}
  {%- endfor %}
+ {%- if not interface.connected_endpoints and interface.type is eq '1000base-t' %}
+ shutdown
+ {%- endif %}
 !
 {%- endfor %}
 router static
