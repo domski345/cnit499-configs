@@ -78,7 +78,7 @@ def create_device(**device):
     nb.dcim.devices.update([{'id': id, 'serial': node_id, 'custom_fields': {'console': console, 'is_is_system_id': is_is_id}, 'primary_ip4': primary_ip4.id, 'status': "planned"}])
     
     # Connect with telnet and begin configuring
-    tn = Telnet('gns3.domski.tech', console)
+    tn = Telnet('gns3-test.domski.tech', console)
     for line in conf['conf']:
         if "timeout" in line:
             tn.read_until(line['read'].encode('utf-8'), timeout=line['timeout'])
