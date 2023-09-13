@@ -225,7 +225,7 @@ def create_site():
         return {"error": "Request must be JSON"}, 415
     update = request.get_json()
     slug = update['data']['slug']
-    nb.dcim.devices.create(name=f"{slug}-P1",role=2,site=update['data']['id'])
+    nb.dcim.devices.create(name=f"{slug}-P1",role=2,site=update['data']['id'],device_type=1)
 
     return f"{update['data']['display']} is being configured", 201
 
