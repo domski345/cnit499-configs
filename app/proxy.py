@@ -225,7 +225,24 @@ def create_site():
         return {"error": "Request must be JSON"}, 415
     update = request.get_json()
     slug = update['data']['slug']
-    nb.dcim.devices.create(name=f"{slug}-P1",role=2,site=update['data']['id'],device_type=1)
+    p1 = nb.dcim.devices.create(name=f"{slug}-p1",role=2,site=update['data']['id'],device_type=1)
+    p2 = nb.dcim.devices.create(name=f"{slug}-p2",role=2,site=update['data']['id'],device_type=1)
+    pe1 = nb.dcim.devices.create(name=f"{slug}-pe1",role=1,site=update['data']['id'],device_type=1)
+    pe2 = nb.dcim.devices.create(name=f"{slug}-pe2",role=1,site=update['data']['id'],device_type=1)
+    # Define connection interfaces 
+    list = [
+        (pe1,0,p1,2),
+        (pe1,1,p2,2),
+        (pe2,0,p1,3),
+        (pe2,1,p2,3),
+        (p1,0,p2,0),
+        (p1,1,p2,1)
+    ]
+    for con in list:
+        a = [{'object_id': nb.dcim.interfaces.get(device_id=con[0].id,label=con[1]).id, 'object_type': 'dcim.interface'}]
+        b = [{'object_id': nb.dcim.interfaces.get(device_id=con[2].id,label=con[3]).id, 'object_type': 'dcim.interface'}]
+        nb.dcim.cables.create(a_terminations=a,b_terminations=b)
+
 
     return f"{update['data']['display']} is being configured", 201
 
