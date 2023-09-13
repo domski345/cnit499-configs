@@ -220,7 +220,7 @@ def device_update():
 
 # Create new site
 @application.post("/site")
-def debug():
+def create_site():
     if not request.is_json:
         return {"error": "Request must be JSON"}, 415
     update = request.get_json()
