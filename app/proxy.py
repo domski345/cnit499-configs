@@ -218,6 +218,17 @@ def device_update():
     # Happy return code back to netbox
     return f"{update['data']['name']} is being configured", 201
 
+# Create new site
+@application.post("/site")
+def debug():
+    if not request.is_json:
+        return {"error": "Request must be JSON"}, 415
+    update = request.get_json()
+    slug = update['data']['slug']
+    nb.dcim.devices.create(name=f"{slug}-P1",role=2,site=update['data']['id'])
+
+    return f"{update['data']['display']} is being configured", 201
+
 # Debug
 @application.post("/debug")
 def debug():
