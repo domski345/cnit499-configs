@@ -20,29 +20,37 @@ def device():
     # Get initial call from netbox webhook when device is created
     device = request.get_json()
 
+
+    # Make API call to GNS3 to create the VM
+    api_url = f"http://{gns_url}/v2/projects/{project_id}/templates/{nb.dcim.device_types.get(id=device['data']['device_type']['id'])['slug']}"
+    data = {"x": random.randrange(-800,800), "y": random.randrange(-500,500), "name": f"{device['data']['name']}", "compute_id": "local"}
+    response = requests.post(api_url, json=data)
+    if not response.ok:
+        print("Reason: "+ response.reason)
+        print("Response: "+ response.text)
+        return "", 500
+    node_id = response.json()["node_id"]
+    console = response.json()["console"]
+    # Update netbox console port and node_id
+    nb.dcim.devices.update([{'id': device['data']['id'], 'serial': node_id, 'custom_fields': {'console': console}, 'status': "planned"}])
+    
     # Create device in another thread
-    threading.Thread(target=create_device, name="configure_device", kwargs=device).start()
+    threading.Thread(target=create_device, name="configure_device", args=(node_id,console), kwargs=device).start()
 
     # Happy return code back to netbox
     return "Node was created", 201
 
-def create_device(**device):
+def create_device(*args, **device):
 
     # Set variables accordingly
     id = device['data']['id']
     name = device['data']['name']
     device_type = nb.dcim.device_types.get(id=device['data']['device_type']['id'])
-    template_id = device_type['slug']
     conf = device_type['custom_fields']['ztp_config']
 
-    # Make API call to GNS3 to create the VM
-    api_url = f"http://{gns_url}/v2/projects/{project_id}/templates/{template_id}"
-    data = {"x": random.randrange(-800,800), "y": random.randrange(-500,500), "name": f"{name}", "compute_id": "local"}
-    response = requests.post(api_url, json=data)
-
     # Extract GNS3 assigned data
-    node_id = response.json()["node_id"]
-    console = response.json()["console"]
+    node_id = args[0]
+    console = args[1]
 
     # Generate mac address for mgmt nic
     r1 = random.randint(0, 255)
@@ -75,7 +83,7 @@ def create_device(**device):
     nb.ipam.ip_addresses.update([{'id': primary_ip4.id, 'vrf': 1, 'assigned_object_type': 'dcim.interface', 'assigned_object_id': int_id}])
 
     # Update netbox console port and node_id
-    nb.dcim.devices.update([{'id': id, 'serial': node_id, 'custom_fields': {'console': console, 'is_is_system_id': is_is_id}, 'primary_ip4': primary_ip4.id, 'status': "planned"}])
+    nb.dcim.devices.update([{'id': id, 'custom_fields': {'is_is_system_id': is_is_id}, 'primary_ip4': primary_ip4.id}])
     
     # Connect with telnet and begin configuring
     tn = Telnet('gns3-test.domski.tech', console)
@@ -151,7 +159,7 @@ def cable():
     response = requests.post(api_url, json=data)
     if not response.ok:
         print("Reason: "+ response.reason)
-        print("JSON: "+ response.json())
+        print("Response: "+ response.text)
         return "", 500
 
     # Update netbox with the cable ID
@@ -208,6 +216,10 @@ def device_update():
         # POST request to render config from NetBox
         api_url = f"http://gns3-test.domski.tech:8000/api/dcim/devices/{update['data']['id']}/render-config/"
         response = requests.post(api_url, headers={'authorization' : f'Token {netbox_token}'})
+        if not response.ok:
+            print("Reason: "+ response.reason)
+            print("Response: "+ response.text)
+            return "", 500
         
         # Push config using NAPALM to device
         mgmt_ip = ipaddress.IPv4Interface(update['data']['primary_ip4']['address']).ip
