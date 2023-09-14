@@ -149,6 +149,10 @@ def cable():
     api_url = f"http://{gns_url}/v2/projects/{project_id}/links"
     data = {"nodes": [{ "node_id": device_a['serial'], "adapter_number": int(interface_a['label']), "port_number": 0 }, { "node_id": device_b['serial'], "adapter_number": int(interface_b['label']), "port_number": 0 }]}
     response = requests.post(api_url, json=data)
+    if not response.ok:
+        print("Reason: "+ response.reason)
+        print("JSON: "+ response.json())
+        return "", 500
 
     # Update netbox with the cable ID
     nb.dcim.cables.update([{'id': cable['data']['id'], 'label': response.json()["link_id"]}])
@@ -229,7 +233,6 @@ def create_site():
     p2 = nb.dcim.devices.create(name=f"{slug}-p2",role=2,site=update['data']['id'],device_type=1)
     pe1 = nb.dcim.devices.create(name=f"{slug}-pe1",role=1,site=update['data']['id'],device_type=1)
     pe2 = nb.dcim.devices.create(name=f"{slug}-pe2",role=1,site=update['data']['id'],device_type=1)
-    time.sleep(30)
     # Define connection interfaces 
     list = [
         (pe1,0,p1,2),
